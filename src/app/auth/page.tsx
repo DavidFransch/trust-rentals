@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { AuthForm } from "@/components/auth-form";
+import { Button } from "@/components/ui/button";
+import type { SignInFormData, SignUpFormData } from "@/lib/auth-schema";
 
 export default function AuthPage() {
   const [user, setUser] = useState<any>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<"renter" | "landlord">("renter");
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -19,32 +20,48 @@ export default function AuthPage() {
     );
   }, []);
 
-  async function signUp() {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) return alert(error.message);
-
-    if (data.user) {
-      await supabase.from("profiles").insert({
-        id: data.user.id,
-        name,
-        role,
+  async function handleSignUp(formData: SignUpFormData) {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
       });
-      alert("Signup successful! Check your email for confirmation.");
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      if (data.user && formData.name && formData.role) {
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          name: formData.name,
+          role: formData.role,
+        });
+        alert("Signup successful! Check your email for confirmation.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
-  async function signIn() {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  async function handleSignIn(formData: SignInFormData) {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-    if (error) return alert(error.message);
-    if (data.user) setUser(data.user);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      if (data.user) setUser(data.user);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function signOut() {
@@ -72,56 +89,31 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <div className="bg-white shadow-lg rounded-lg p-8">
           <h2 className="text-2xl font-bold mb-6 text-center">
-            Sign Up / Sign In
+            {authMode === "signin" ? "Sign In" : "Sign Up"}
           </h2>
 
-          {/* Custom signup form */}
-          <div className="flex flex-col gap-4 mb-6">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "renter" | "landlord")}
-              className="w-full p-2 border rounded"
-            >
-              <option value="renter">Renter</option>
-              <option value="landlord">Landlord</option>
-            </select>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={signUp}
-              className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
-            >
-              Sign Up
-            </button>
-            <button
-              onClick={signIn}
-              className="flex-1 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 transition"
+          <div className="flex gap-2 mb-6">
+            <Button
+              variant={authMode === "signin" ? "default" : "outline"}
+              onClick={() => setAuthMode("signin")}
+              className="flex-1"
             >
               Sign In
-            </button>
+            </Button>
+            <Button
+              variant={authMode === "signup" ? "default" : "outline"}
+              onClick={() => setAuthMode("signup")}
+              className="flex-1"
+            >
+              Sign Up
+            </Button>
           </div>
+
+          <AuthForm
+            mode={authMode}
+            onSubmit={authMode === "signin" ? handleSignIn : handleSignUp}
+            isLoading={isLoading}
+          />
 
           <div className="mt-6">
             <p className="text-center text-gray-500 text-sm">
