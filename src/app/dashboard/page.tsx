@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { User } from "@supabase/supabase-js"
+import { DashboardNav, LoadingSpinner, EmptyPlaceholder } from "@/components/dashboard"
 
 interface UserProfile {
   id: string
@@ -57,15 +58,6 @@ export default function DashboardPage() {
     checkAuth()
   }, [router])
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      router.push("/auth")
-    } catch (error) {
-      console.error("Error signing out:", error)
-    }
-  }
-
   const getUserDisplayName = () => {
     if (profile?.name) return profile.name
     if (user?.email) return user.email
@@ -80,35 +72,31 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading dashboard..." />
       </div>
     )
   }
 
+  const propertyIcon = (
+    <svg
+      className="h-12 w-12 text-gray-400"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+      />
+    </svg>
+  )
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">Trust Rentals</h1>
-            <nav className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/profile-setup")}
-              >
-                Profile Setup
-              </Button>
-              <Button variant="ghost" onClick={handleSignOut}>
-                Logout
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <DashboardNav />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -136,29 +124,15 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-gray-500">
-                  <div className="mb-4">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-lg font-medium">No properties yet</p>
-                  <p className="text-sm">
-                    {profile?.role === "landlord" 
-                      ? "Add your first rental property to get started" 
-                      : "Check back soon for available rentals"}
-                  </p>
-                </div>
+                <EmptyPlaceholder 
+                  message="No properties yet"
+                  icon={propertyIcon}
+                />
+                <p className="text-sm text-gray-500 text-center mt-2">
+                  {profile?.role === "landlord" 
+                    ? "Add your first rental property to get started" 
+                    : "Check back soon for available rentals"}
+                </p>
               </CardContent>
             </Card>
           </div>
