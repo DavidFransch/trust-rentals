@@ -18,7 +18,14 @@ export const authSchema = z.object({
 })
 
 export const signInSchema = authSchema.pick({ email: true, password: true })
-export const signUpSchema = authSchema
+export const signUpSchema = authSchema.extend({
+  name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must be less than 50 characters"),
+  role: z.enum(["renter", "landlord"], {
+    message: "Role is required",
+  }),
+})
 
 export type AuthFormData = z.infer<typeof authSchema>
 export type SignInFormData = z.infer<typeof signInSchema>
