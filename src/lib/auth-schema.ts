@@ -30,3 +30,12 @@ export const signUpSchema = authSchema.extend({
 export type AuthFormData = z.infer<typeof authSchema>
 export type SignInFormData = z.infer<typeof signInSchema>
 export type SignUpFormData = z.infer<typeof signUpSchema>
+
+export const profileSetupSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  role: z.enum(["renter", "landlord"], { message: "Role is required" }),
+  phone: z.string().optional(),
+  bio: z.string().max(200, "Bio must be under 200 characters").optional(),
+})
+
+export type ProfileSetupFormData = z.infer<typeof profileSetupSchema>
