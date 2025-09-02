@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
 
 export default function AuthPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -14,34 +14,27 @@ export default function AuthPage() {
     );
   }, []);
 
-  async function signUp() {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  // Create profile automatically after signup
+  useEffect(() => {
+    if (user) {
+      const createProfile = async () => {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
 
-    if (error) return alert(error.message);
-
-    if (data.user) {
-      // Automatically create a profile in 'profiles' table
-      await supabase.from("profiles").insert({
-        id: data.user.id,
-        role: "renter", // default role; can add a selector later
-        name: "",
-      });
-      alert("Signup successful! Check your email for confirmation.");
+        if (!existing) {
+          await supabase.from("profiles").insert({
+            id: user.id,
+            role: "renter",
+            name: "",
+          });
+        }
+      };
+      createProfile();
     }
-  }
-
-  async function signIn() {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) return alert(error.message);
-    if (data.user) setUser(data.user);
-  }
+  }, [user]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -50,36 +43,31 @@ export default function AuthPage() {
 
   if (user)
     return (
-      <div>
-        <h2>Welcome, {user.email}</h2>
-        <button onClick={signOut}>Sign Out</button>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+        <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-sm text-center">
+          <h2 className="text-2xl mb-4">Welcome, {user.email}</h2>
+          <button
+            className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition"
+            onClick={signOut}
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
     );
 
   return (
-    <div className="max-w-sm mx-auto mt-20 p-4 border rounded">
-      <h2 className="text-xl mb-4">Sign Up / Sign In</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full p-2 mb-2 border rounded"
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-full p-2 mb-4 border rounded"
-      />
-      <div className="flex gap-2">
-        <button onClick={signUp} className="bg-blue-500 text-white p-2 rounded">
-          Sign Up
-        </button>
-        <button onClick={signIn} className="bg-green-500 text-white p-2 rounded">
-          Sign In
-        </button>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white shadow-lg rounded-lg p-8">
+          <h2 className="text-2xl font-bold mb-6 text-center">Sign Up / Sign In</h2>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            providers={[]}
+            socialLayout="horizontal"
+          />
+        </div>
       </div>
     </div>
   );
