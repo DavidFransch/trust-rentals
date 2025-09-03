@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { User } from "@supabase/supabase-js"
-import { DashboardNav, LoadingSpinner, EmptyPlaceholder } from "@/components/dashboard"
+import { DashboardNav, LoadingSpinner, EmptyPlaceholder, PropertyCard } from "@/components/dashboard"
 
 interface UserProfile {
   id: string
@@ -16,10 +16,20 @@ interface UserProfile {
   bio: string | null
 }
 
+interface Property {
+  id: string
+  title: string
+  address: string
+  image_url?: string
+  owner_id: string
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [properties, setProperties] = useState<Property[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingProperties, setIsLoadingProperties] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -57,6 +67,33 @@ export default function DashboardPage() {
 
     checkAuth()
   }, [router])
+
+  // Fetch properties for landlords
+  useEffect(() => {
+    const fetchProperties = async () => {
+      if (!user || !profile || profile.role !== "landlord") return
+
+      setIsLoadingProperties(true)
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select("*")
+          .eq("owner_id", user.id)
+
+        if (error) {
+          console.error("Error fetching properties:", error)
+        } else {
+          setProperties(data || [])
+        }
+      } catch (error) {
+        console.error("Properties fetch error:", error)
+      } finally {
+        setIsLoadingProperties(false)
+      }
+    }
+
+    fetchProperties()
+  }, [user, profile])
 
   const getUserDisplayName = () => {
     if (profile?.name) return profile.name
@@ -124,15 +161,48 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <EmptyPlaceholder 
-                  message="No properties yet"
-                  icon={propertyIcon}
-                />
-                <p className="text-sm text-gray-500 text-center mt-2">
-                  {profile?.role === "landlord" 
-                    ? "Add your first rental property to get started" 
-                    : "Check back soon for available rentals"}
-                </p>
+                {profile?.role === "landlord" ? (
+                  isLoadingProperties ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner message="Loading properties..." />
+                    </div>
+                  ) : properties.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {properties.map((property) => (
+                        <PropertyCard
+                          key={property.id}
+                          title={property.title}
+                          address={property.address}
+                          imageUrl={property.image_url}
+                          onClick={() => {
+                            // TODO: Navigate to property details
+                            console.log("Property clicked:", property.id)
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <EmptyPlaceholder 
+                        message="No properties yet"
+                        icon={propertyIcon}
+                      />
+                      <p className="text-sm text-gray-500 text-center mt-2">
+                        Add your first rental property to get started
+                      </p>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <EmptyPlaceholder 
+                      message="No properties yet"
+                      icon={propertyIcon}
+                    />
+                    <p className="text-sm text-gray-500 text-center mt-2">
+                      Check back soon for available rentals
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -189,7 +259,9 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Properties:</span>
-                    <span className="font-medium">0</span>
+                    <span className="font-medium">
+                      {profile?.role === "landlord" ? properties.length : 0}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Reviews:</span>
