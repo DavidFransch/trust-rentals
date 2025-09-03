@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { User } from "@supabase/supabase-js"
-import { DashboardNav, LoadingSpinner, EmptyPlaceholder, PropertyCard } from "@/components/dashboard"
+import { DashboardNav, LoadingSpinner, EmptyPlaceholder, PropertyCard, ReviewCard } from "@/components/dashboard"
 
 interface UserProfile {
   id: string
@@ -24,12 +24,25 @@ interface Property {
   owner_id: string
 }
 
+interface Review {
+  id: string
+  property_id: string
+  reviewer_id: string
+  rating: number
+  text: string
+  created_at: string
+  reviewer_name?: string
+  property_title?: string
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [properties, setProperties] = useState<Property[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingProperties, setIsLoadingProperties] = useState(false)
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -93,6 +106,33 @@ export default function DashboardPage() {
     }
 
     fetchProperties()
+  }, [user, profile])
+
+  // Fetch reviews for renters
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!user || !profile || profile.role !== "renter") return
+
+      setIsLoadingReviews(true)
+      try {
+        const { data, error } = await supabase
+          .from("reviews")
+          .select("*")
+          .eq("reviewer_id", user.id)
+
+        if (error) {
+          console.error("Error fetching reviews:", error)
+        } else {
+          setReviews(data || [])
+        }
+      } catch (error) {
+        console.error("Reviews fetch error:", error)
+      } finally {
+        setIsLoadingReviews(false)
+      }
+    }
+
+    fetchReviews()
   }, [user, profile])
 
   const getUserDisplayName = () => {
@@ -232,9 +272,33 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {profile?.role === "renter" ? (
-                  <Button variant="outline" className="w-full" disabled>
-                    Add New Review
-                  </Button>
+                  isLoadingReviews ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner message="Loading reviews..." />
+                    </div>
+                  ) : reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <ReviewCard
+                          key={review.id}
+                          rating={review.rating}
+                          comment={review.text}
+                          reviewerName={review.reviewer_name || "Anonymous"}
+                          date={review.created_at ? new Date(review.created_at).toLocaleDateString() : "Unknown date"}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <EmptyPlaceholder 
+                        message="No reviews yet"
+                        icon={propertyIcon}
+                      />
+                      <p className="text-sm text-gray-500 text-center mt-2">
+                        Leave your first review to get started
+                      </p>
+                    </>
+                  )
                 ) : profile?.role === "landlord" ? (
                   <Button variant="outline" className="w-full" disabled>
                     View Reviews Received
@@ -265,7 +329,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Reviews:</span>
-                    <span className="font-medium">0</span>
+                    <span className="font-medium">
+                      {profile?.role === "renter" ? reviews.length : 0}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Profile:</span>
