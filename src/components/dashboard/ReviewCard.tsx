@@ -7,9 +7,10 @@ interface ReviewCardProps {
   rating: number
   comment: string
   date: string
+  propertyTitle?: string
 }
 
-export function ReviewCard({ reviewerName, rating, comment, date }: ReviewCardProps) {
+export function ReviewCard({ reviewerName, rating, comment, date, propertyTitle }: ReviewCardProps) {
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, index) => (
       <svg
@@ -30,6 +31,9 @@ export function ReviewCard({ reviewerName, rating, comment, date }: ReviewCardPr
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <h4 className="font-medium text-gray-900">{reviewerName}</h4>
+            {propertyTitle && (
+              <h5 className="text-sm text-gray-600">{propertyTitle}</h5>
+            )}
             <div className="flex items-center space-x-1">
               {renderStars(rating)}
             </div>

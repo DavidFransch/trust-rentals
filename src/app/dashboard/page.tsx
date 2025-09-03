@@ -108,23 +108,57 @@ export default function DashboardPage() {
     fetchProperties()
   }, [user, profile])
 
-  // Fetch reviews for renters
+  // Fetch reviews for both renters and landlords
   useEffect(() => {
     const fetchReviews = async () => {
-      if (!user || !profile || profile.role !== "renter") return
+      if (!user || !profile) return
 
       setIsLoadingReviews(true)
       try {
-        const { data, error } = await supabase
-          .from("reviews")
-          .select("*")
-          .eq("reviewer_id", user.id)
+        let reviewsData: Review[] = []
 
-        if (error) {
-          console.error("Error fetching reviews:", error)
-        } else {
-          setReviews(data || [])
+        if (profile.role === "renter") {
+          // For renters: fetch reviews they wrote
+          const { data, error } = await supabase
+            .from("reviews")
+            .select(`
+              *,
+              properties!inner(title)
+            `)
+            .eq("reviewer_id", user.id)
+
+          if (error) {
+            console.error("Error fetching renter reviews:", error)
+          } else {
+            reviewsData = (data || []).map(review => ({
+              ...review,
+              reviewer_name: profile?.name || user?.email?.split('@')[0] || 'You',
+              property_title: review.properties?.title
+            }))
+          }
+        } else if (profile.role === "landlord") {
+          // For landlords: fetch reviews of their properties
+          const { data, error } = await supabase
+            .from("reviews")
+            .select(`
+              *,
+              properties!inner(title, owner_id),
+              profiles!reviewer_id(name)
+            `)
+            .eq("properties.owner_id", user.id)
+
+          if (error) {
+            console.error("Error fetching landlord reviews:", error)
+          } else {
+            reviewsData = (data || []).map(review => ({
+              ...review,
+              property_title: review.properties?.title,
+              reviewer_name: review.profiles?.name || 'Anonymous'
+            }))
+          }
         }
+
+        setReviews(reviewsData)
       } catch (error) {
         console.error("Reviews fetch error:", error)
       } finally {
@@ -300,9 +334,34 @@ export default function DashboardPage() {
                     </>
                   )
                 ) : profile?.role === "landlord" ? (
-                  <Button variant="outline" className="w-full" disabled>
-                    View Reviews Received
-                  </Button>
+                  isLoadingReviews ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner message="Loading reviews..." />
+                    </div>
+                  ) : reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <ReviewCard
+                          key={review.id}
+                          rating={review.rating}
+                          comment={review.text}
+                          reviewerName={review.reviewer_name || "Anonymous"}
+                          date={review.created_at ? new Date(review.created_at).toLocaleDateString() : "Unknown date"}
+                          propertyTitle={review.property_title}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <EmptyPlaceholder 
+                        message="No reviews yet"
+                        icon={propertyIcon}
+                      />
+                      <p className="text-sm text-gray-500 text-center mt-2">
+                        Get your first review to get started
+                      </p>
+                    </>
+                  )
                 ) : (
                   <p className="text-sm text-gray-500">
                     Set your role to access review features
@@ -330,7 +389,7 @@ export default function DashboardPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Reviews:</span>
                     <span className="font-medium">
-                      {profile?.role === "renter" ? reviews.length : 0}
+                      {reviews.length}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
