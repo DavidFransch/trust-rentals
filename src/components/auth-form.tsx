@@ -34,13 +34,14 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, onSubmit, isLoading = false }: AuthFormProps) {
   const schema = mode === "signin" ? signInSchema : signUpSchema
-  
+
   const form = useForm<SignInFormData | SignUpFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       email: "",
       password: "",
-      ...(mode === "signup" && { name: "", role: "renter" as const }),
+      name: "",
+      role: "renter",
     },
   })
 
@@ -118,9 +119,9 @@ export function AuthForm({ mode, onSubmit, isLoading = false }: AuthFormProps) {
                 <FormItem>
                   <FormLabel>Role</FormLabel>
                   <FormControl>
-                    <Select {...field}>
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-                        <SelectValue />
+                        <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="renter">Renter</SelectItem>

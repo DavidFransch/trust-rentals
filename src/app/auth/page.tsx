@@ -64,6 +64,14 @@ export default function AuthPage() {
     }
   }
 
+  async function handleSubmit(formData: SignInFormData | SignUpFormData) {
+    if (authMode === "signin") {
+      await handleSignIn(formData as SignInFormData);
+    } else {
+      await handleSignUp(formData as SignUpFormData);
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null);
@@ -111,7 +119,7 @@ export default function AuthPage() {
 
           <AuthForm
             mode={authMode}
-            onSubmit={authMode === "signin" ? handleSignIn : handleSignUp}
+            onSubmit={handleSubmit}
             isLoading={isLoading}
           />
 
