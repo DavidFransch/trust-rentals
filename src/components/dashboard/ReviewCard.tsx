@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { formatRelativeTime } from "@/lib/utils"
 
 interface ReviewCardProps {
   review: {
@@ -37,22 +38,30 @@ export function ReviewCard({ review }: ReviewCardProps) {
       onClick={() => router.push(`/property/${review.property_id}`)}
       className="cursor-pointer hover:shadow-md transition-shadow"
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <h4 className="font-medium text-gray-900">{review.reviewer_name}</h4>
-            {review.property_title && (
-              <h5 className="text-sm text-gray-600">{review.property_title}</h5>
-            )}
-            <div className="flex items-center space-x-1">
-              {renderStars(review.rating)}
-            </div>
+      <CardHeader className="pb-3 space-y-2">
+        <div className="flex flex-col space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-gray-900 truncate">
+              {review.reviewer_name}
+            </span>
+            <span className="text-xs text-gray-500 flex-shrink-0">
+              {formatRelativeTime(review.created_at)}
+            </span>
           </div>
-          <span className="text-sm text-gray-500">{review.created_at}</span>
+          {review.property_title && (
+            <span className="text-sm text-gray-600 truncate">
+              {review.property_title}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center space-x-1">
+          {renderStars(review.rating)}
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <p className="text-gray-700 text-sm leading-relaxed">{review.text}</p>
+        <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">
+          {review.text}
+        </p>
       </CardContent>
     </Card>
   )

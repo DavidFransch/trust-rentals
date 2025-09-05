@@ -315,10 +315,7 @@ export default function DashboardPage() {
                       {reviews.map((review) => (
                         <ReviewCard
                           key={review.id}
-                          rating={review.rating}
-                          comment={review.text}
-                          reviewerName={review.reviewer_name || "Anonymous"}
-                          date={review.created_at ? new Date(review.created_at).toLocaleDateString() : "Unknown date"}
+                          review={review}
                         />
                       ))}
                     </div>
@@ -343,11 +340,7 @@ export default function DashboardPage() {
                       {reviews.map((review) => (
                         <ReviewCard
                           key={review.id}
-                          rating={review.rating}
-                          comment={review.text}
-                          reviewerName={review.reviewer_name || "Anonymous"}
-                          date={review.created_at ? new Date(review.created_at).toLocaleDateString() : "Unknown date"}
-                          propertyTitle={review.property_title}
+                          review={review} 
                         />
                       ))}
                     </div>
@@ -407,3 +400,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
