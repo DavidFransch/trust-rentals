@@ -4,6 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyPlaceholder } from "@/components/dashboard"
 import { formatRelativeTime } from "@/lib/utils"
 
+interface Profile {
+  id: string
+  name: string | null
+  avatar_url: string | null
+}
+
+interface Review {
+  id: string
+  rating: number
+  text: string
+  created_at: string
+  profiles: Profile
+}
+
 export default async function PropertyPage({ params }: { params: { id: string } }) {
   const supabase = createServerComponentClient({ cookies })
 
@@ -20,16 +34,18 @@ export default async function PropertyPage({ params }: { params: { id: string } 
 
   // Fetch reviews for this property
   const { data: reviews } = await supabase
-    .from("reviews")
+    .from('reviews')
     .select(`
-      *,
-      profiles:reviewer_id (
-        full_name,
+      id,
+      rating,
+      text,
+      created_at,
+      profiles!reviewer_id (
+        id,
+        name,
         avatar_url
       )
-    `)
-    .eq("property_id", params.id)
-    .order("created_at", { ascending: false })
+    `) as unknown as { data: Review[] }
 
   return (
     <div className="container mx-auto p-8">
@@ -65,7 +81,7 @@ export default async function PropertyPage({ params }: { params: { id: string } 
                   <div className="flex items-center gap-2 mb-2">
                     <div>
                       <p className="font-medium">
-                        {review.profiles?.full_name || "Anonymous"}
+                        {review.profiles?.name || "Anonymous"}
                       </p>
                       <p className="text-sm text-gray-500">
                         {formatRelativeTime(review.created_at)}
