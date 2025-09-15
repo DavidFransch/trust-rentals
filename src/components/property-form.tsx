@@ -17,11 +17,17 @@ import { propertyFormSchema, type PropertyFormValues } from "@/lib/property-sche
 
 interface PropertyFormProps {
   initialData?: PropertyFormValues
-  onSubmit: (data: PropertyFormValues) => Promise<void>
+  onSubmit?: (data: PropertyFormValues) => Promise<void>
   isLoading?: boolean
+  showSubmitButton?: boolean
 }
 
-export function PropertyForm({ initialData, onSubmit, isLoading }: PropertyFormProps) {
+export function PropertyForm({ 
+  initialData, 
+  onSubmit, 
+  isLoading,
+  showSubmitButton = true 
+}: PropertyFormProps) {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
     defaultValues: initialData || {
@@ -34,7 +40,7 @@ export function PropertyForm({ initialData, onSubmit, isLoading }: PropertyFormP
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={onSubmit ? form.handleSubmit(onSubmit) : undefined} className="space-y-4">
         <FormField
           control={form.control}
           name="title"
@@ -94,9 +100,11 @@ export function PropertyForm({ initialData, onSubmit, isLoading }: PropertyFormP
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save Property"}
-        </Button>
+        {showSubmitButton && (
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Property"}
+          </Button>
+        )}
       </form>
     </Form>
   )
