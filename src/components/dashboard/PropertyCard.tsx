@@ -2,15 +2,25 @@
 
 import Image from "next/image"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 interface PropertyCardProps {
   title: string
   address: string
   imageUrl?: string
+  onEdit?: () => void
+  onDelete?: () => void
   onClick?: () => void
 }
 
-export function PropertyCard({ title, address, imageUrl, onClick }: PropertyCardProps) {
+export function PropertyCard({ 
+  title, 
+  address, 
+  imageUrl, 
+  onEdit, 
+  onDelete,
+  onClick 
+}: PropertyCardProps) {
   return (
     <Card 
       className={`overflow-hidden transition-shadow hover:shadow-md ${
@@ -52,6 +62,35 @@ export function PropertyCard({ title, address, imageUrl, onClick }: PropertyCard
           {title}
         </h3>
         <p className="text-gray-600 text-sm line-clamp-2">{address}</p>
+        
+        {(onEdit || onDelete) && (
+          <div className="flex gap-2 mt-4">
+            {onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit()
+                }}
+              >
+                Edit
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                }}
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <div className="w-full text-xs text-gray-500">

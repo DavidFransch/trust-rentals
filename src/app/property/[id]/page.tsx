@@ -24,7 +24,7 @@ interface Review {
 
 export default async function PropertyPage({ params }: { params: { id: string }}) {
   const {id: propertyId} = params;
-  const supabase = createServerComponentClient({cookies});
+  const supabase =  createServerComponentClient({cookies});
 
   // Fetch property details
   const { data: property } = await supabase
