@@ -15,17 +15,22 @@ interface Review {
   rating: number
   text: string
   created_at: string
-  profiles: Profile
+  profiles: {
+    id: string
+    name: string | null
+    avatar_url: string | null
+  }
 }
 
-export default async function PropertyPage({ params }: { params: { id: string } }) {
-  const supabase = createServerComponentClient({ cookies })
+export default async function PropertyPage({ params }: { params: { id: string }}) {
+  const {id: propertyId} = params;
+  const supabase = createServerComponentClient({cookies});
 
   // Fetch property details
   const { data: property } = await supabase
     .from("properties")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", propertyId)
     .single()
 
   if (!property) {
@@ -45,7 +50,10 @@ export default async function PropertyPage({ params }: { params: { id: string } 
         name,
         avatar_url
       )
-    `) as unknown as { data: Review[] }
+    `)
+    .eq("property_id", propertyId)
+    .order('created_at', { ascending: false })
+    .then(({ data }) => ({ data: data as unknown as Review[] }))
 
   return (
     <div className="container mx-auto p-8">
