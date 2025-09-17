@@ -22,11 +22,11 @@ interface PropertyFormProps {
   showSubmitButton?: boolean
 }
 
-export function PropertyForm({ 
-  initialData, 
-  onSubmit, 
+export function PropertyForm({
+  initialData,
+  onSubmit,
   isLoading,
-  showSubmitButton = true 
+  showSubmitButton = true
 }: PropertyFormProps) {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -40,7 +40,7 @@ export function PropertyForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit ? form.handleSubmit(onSubmit) : undefined} className="space-y-4">
+      <div className="space-y-4">
         <FormField
           control={form.control}
           name="title"
@@ -54,7 +54,7 @@ export function PropertyForm({
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="address"
@@ -76,9 +76,9 @@ export function PropertyForm({
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Describe your property..." 
-                  {...field} 
+                <Textarea
+                  placeholder="Describe your property..."
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -101,11 +101,16 @@ export function PropertyForm({
         />
 
         {showSubmitButton && (
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={isLoading}
+            onClick={onSubmit ? form.handleSubmit(onSubmit) : undefined}
+          >
             {isLoading ? "Saving..." : "Save Property"}
           </Button>
         )}
-      </form>
+      </div>
     </Form>
   )
 }

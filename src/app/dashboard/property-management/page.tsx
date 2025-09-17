@@ -126,7 +126,7 @@ export default function PropertyManagementPage() {
 
   const handleSubmit = async (data: PropertyFormValues) => {
     if (!userId) return;
-    
+
     setIsSaving(true);
     try {
       const { error } = await supabase
@@ -204,31 +204,23 @@ export default function PropertyManagementPage() {
               </AlertDialogTrigger>
               <AlertDialogContent className="sm:max-w-[500px]">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Add New Property</AlertDialogTitle>
-                </AlertDialogHeader>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  handleSubmit({
-                    title: formData.get('title') as string,
-                    address: formData.get('address') as string,
-                    description: formData.get('description') as string || undefined,
-                    image_url: formData.get('image_url') as string || undefined,
-                  });
-                }}>
-                  <div className="py-4">
-                    <PropertyForm
-                      showSubmitButton={false}
-                      isLoading={isSaving}
-                    />
+                  <div className="flex justify-between items-center w-full">
+                    <AlertDialogTitle>Add New Property</AlertDialogTitle>
+                    <AlertDialogCancel asChild>
+                      <Button variant="ghost" size="icon">✕</Button>
+                    </AlertDialogCancel>
                   </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-                    <Button type="submit" disabled={isSaving}>
-                      {isSaving ? "Saving..." : "Save Property"}
-                    </Button>
-                  </AlertDialogFooter>
-                </form>
+                </AlertDialogHeader>
+                <div className="py-4">
+                  <PropertyForm
+                    onSubmit={handleSubmit}
+                    showSubmitButton={true}
+                    isLoading={isSaving}
+                  />
+                </div>
+                <AlertDialogFooter>
+                  {/* <AlertDialogCancel type="button">Cancel</AlertDialogCancel> */}
+                </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>
