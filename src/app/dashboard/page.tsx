@@ -49,8 +49,8 @@ export default function DashboardPage() {
     const checkAuth = async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-         // Redirect to auth if not authenticated
+
+        // Redirect to auth if not authenticated
         if (userError || !user) {
           router.push("/auth")
           return
@@ -229,8 +229,8 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Properties</CardTitle>
                 <CardDescription>
-                  {profile?.role === "landlord" 
-                    ? "Manage your rental properties" 
+                  {profile?.role === "landlord"
+                    ? "Manage your rental properties"
                     : "Browse available rentals"}
                 </CardDescription>
               </CardHeader>
@@ -248,16 +248,13 @@ export default function DashboardPage() {
                           title={property.title}
                           address={property.address}
                           imageUrl={property.image_url}
-                          onClick={() => {
-                            // TODO: Navigate to property details
-                            console.log("Property clicked:", property.id)
-                          }}
+                          onClick={() => router.push(`/property/${property.id}`)}
                         />
                       ))}
                     </div>
                   ) : (
                     <>
-                      <EmptyPlaceholder 
+                      <EmptyPlaceholder
                         message="No properties yet"
                         icon={propertyIcon}
                       />
@@ -268,7 +265,7 @@ export default function DashboardPage() {
                   )
                 ) : (
                   <>
-                    <EmptyPlaceholder 
+                    <EmptyPlaceholder
                       message="No properties yet"
                       icon={propertyIcon}
                     />
@@ -321,7 +318,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <>
-                      <EmptyPlaceholder 
+                      <EmptyPlaceholder
                         message="No reviews yet"
                         icon={propertyIcon}
                       />
@@ -340,13 +337,13 @@ export default function DashboardPage() {
                       {reviews.map((review) => (
                         <ReviewCard
                           key={review.id}
-                          review={review} 
+                          review={review}
                         />
                       ))}
                     </div>
                   ) : (
                     <>
-                      <EmptyPlaceholder 
+                      <EmptyPlaceholder
                         message="No reviews yet"
                         icon={propertyIcon}
                       />

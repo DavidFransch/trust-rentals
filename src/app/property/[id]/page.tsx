@@ -1,133 +1,297 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyPlaceholder } from "@/components/dashboard"
-import { formatRelativeTime } from "@/lib/utils"
+"use client"
 
-interface Profile {
+import React, { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabaseClient"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import { DashboardNav, LoadingSpinner, ReviewCard } from "@/components/dashboard"
+import { ReviewForm } from "@/components/review-form"
+
+interface Property {
   id: string
-  name: string | null
-  avatar_url: string | null
+  title: string
+  address: string
+  image_url?: string
+  owner_id: string
 }
 
 interface Review {
   id: string
+  property_id: string
+  reviewer_id: string
   rating: number
   text: string
   created_at: string
-  profiles: {
-    id: string
-    name: string | null
-    avatar_url: string | null
-  }
+  reviewer_name?: string
 }
 
-export default async function PropertyPage({ params }: { params: { id: string }}) {
-  const {id: propertyId} = params;
-  const supabase =  createServerComponentClient({cookies});
+interface ReviewFormValues {
+  rating: number
+  text: string
+}
 
-  // Fetch property details
-  const { data: property } = await supabase
-    .from("properties")
-    .select("*")
-    .eq("id", propertyId)
-    .single()
+export default function PropertyPage({ params }: { params: { id: string } }) {
+  const propertyId = params.id
+  const router = useRouter()
 
-  if (!property) {
-    return <div className="container mx-auto p-8">Property not found</div>
+  const [property, setProperty] = useState<Property | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null)
+  const [reviewToEdit, setReviewToEdit] = useState<Review | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // Fetch user session and property details
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          router.push("/auth")
+          return
+        }
+        setUserId(user.id)
+
+        const { data: propertyData, error: propertyError } = await supabase
+          .from("properties")
+          .select("*")
+          .eq("id", propertyId)
+          .single()
+
+        if (propertyError || !propertyData) {
+          console.error("Error fetching property:", propertyError)
+          router.push("/dashboard")
+          return
+        }
+
+        setProperty(propertyData)
+      } catch (error) {
+        console.error("Error fetching property or session:", error)
+        router.push("/dashboard")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [propertyId, router])
+
+  // Fetch reviews whenever the property is set
+  useEffect(() => {
+    if (!property) return
+
+    const fetchReviews = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("reviews")
+          .select(`
+            *,
+            profiles:reviewer_id (name)
+          `)
+          .eq("property_id", property.id)
+          .order("created_at", { ascending: false })
+
+        if (error) throw error
+
+        const reviewsWithNames = (data || []).map((review: any) => ({
+          id: review.id,
+          property_id: review.property_id,
+          reviewer_id: review.reviewer_id,
+          rating: review.rating,
+          text: review.text,
+          created_at: review.created_at,
+          reviewer_name: review.profiles?.name ?? "Anonymous",
+        }))
+
+        setReviews(reviewsWithNames)
+      } catch (error) {
+        console.error("Error fetching reviews:", error)
+      }
+    }
+
+    fetchReviews()
+  }, [property])
+
+  const handleCreateReview = async (data: ReviewFormValues) => {
+    if (!userId || !property) return
+    setIsSaving(true)
+    try {
+      const { error } = await supabase.from("reviews").insert([{
+        property_id: property.id,
+        reviewer_id: userId,
+        rating: data.rating,
+        text: data.text,
+      }])
+
+      if (error) throw error
+
+      // Refresh reviews
+      const updatedReviews = await supabase
+        .from("reviews")
+        .select(`*, profiles:reviewer_id(name)`)
+        .eq("property_id", property.id)
+        .order("created_at", { ascending: false })
+
+      setReviews((updatedReviews.data || []).map((r: any) => ({
+        ...r,
+        reviewer_name: r.profiles?.name ?? "Anonymous"
+      })))
+      setIsModalOpen(false)
+    } catch (error) {
+      console.error("Error creating review:", error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  // Fetch reviews for this property
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select(`
-      id,
-      rating,
-      text,
-      created_at,
-      profiles!reviewer_id (
-        id,
-        name,
-        avatar_url
-      )
-    `)
-    .eq("property_id", propertyId)
-    .order('created_at', { ascending: false })
-    .then(({ data }) => ({ data: data as unknown as Review[] }))
+  const handleDeleteReview = async (reviewId: string) => {
+    try {
+      const { error } = await supabase
+        .from("reviews")
+        .delete()
+        .eq("id", reviewId)
+      if (error) throw error
+      setReviews(prev => prev.filter(r => r.id !== reviewId))
+      setReviewToDelete(null)
+    } catch (error) {
+      console.error("Error deleting review:", error)
+    }
+  }
+
+  const handleEditReview = async (data: ReviewFormValues) => {
+    if (!reviewToEdit || !property) return
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from("reviews")
+        .update({ rating: data.rating, text: data.text })
+        .eq("id", reviewToEdit.id)
+      if (error) throw error
+
+      // Refresh reviews
+      const { data: refreshedReviews } = await supabase
+        .from("reviews")
+        .select(`*, profiles:reviewer_id(name)`)
+        .eq("property_id", property.id)
+        .order("created_at", { ascending: false })
+
+      setReviews((refreshedReviews || []).map((r: any) => ({
+        ...r,
+        reviewer_name: r.profiles?.name ?? "Anonymous"
+      })))
+      setReviewToEdit(null)
+    } catch (error) {
+      console.error("Error updating review:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading || !property) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <LoadingSpinner message="Loading property details..." />
+      </div>
+    )
+  }
 
   return (
-    <div className="container mx-auto p-8">
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>{property.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="aspect-video relative mb-4">
-            <img
-              src={property.image_url || "/placeholder.png"}
-              alt={property.title}
-              className="rounded-lg object-cover w-full h-full"
-            />
-          </div>
-          <p className="text-gray-600 mb-2">{property.address}</p>
-          <p className="text-gray-700">{property.description}</p>
-        </CardContent>
-      </Card>
+    <>
+      <DashboardNav />
+      <div className="min-h-screen bg-gray-50">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{property.title}</h1>
+          <p className="text-gray-600 mb-4">{property.address}</p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Reviews</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {reviews && reviews.length > 0 ? (
-            <div className="space-y-4">
-              {reviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="border rounded-lg p-4 bg-white shadow-sm"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div>
-                      <p className="font-medium">
-                        {review.profiles?.name || "Anonymous"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatRelativeTime(review.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 mb-2">
-                    {Array.from({ length: review.rating }).map((_, i) => (
-                      <span key={i} className="text-yellow-400">★</span>
-                    ))}
-                  </div>
-                  <p className="text-gray-700">{review.text}</p>
-                </div>
-              ))}
+          {property.image_url && (
+            <div className="aspect-video relative rounded-lg overflow-hidden mb-8">
+              <img src={property.image_url} alt={property.title} className="object-cover w-full h-full" />
             </div>
-          ) : (
-            <EmptyPlaceholder
-              message="No reviews yet"
-              icon={
-                <svg
-                  className="h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                  />
-                </svg>
-              }
-            />
           )}
-        </CardContent>
-      </Card>
-    </div>
+
+          <Card>
+            <CardHeader className="flex justify-between items-center">
+              <CardTitle>Reviews</CardTitle>
+              <Button onClick={() => setIsModalOpen(true)}>Write a Review</Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {reviews.map(review => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onEdit={userId === review.reviewer_id ? () => setReviewToEdit(review) : undefined}
+                  onDelete={userId === review.reviewer_id ? () => setReviewToDelete(review) : undefined}
+                />
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Create Review Modal */}
+          <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <AlertDialogContent className="sm:max-w-[500px]">
+              <AlertDialogHeader className="flex justify-between items-center">
+                <AlertDialogTitle>Write a Review</AlertDialogTitle>
+                <AlertDialogCancel asChild>
+                  <Button variant="ghost">✕</Button>
+                </AlertDialogCancel>
+              </AlertDialogHeader>
+              <div className="py-4">
+                <ReviewForm onSubmit={handleCreateReview} isLoading={isSaving} />
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Edit Review Modal */}
+          <AlertDialog open={!!reviewToEdit} onOpenChange={() => setReviewToEdit(null)}>
+            <AlertDialogContent className="sm:max-w-[500px]">
+              <AlertDialogHeader className="flex justify-between items-center">
+                <AlertDialogTitle>Edit Review</AlertDialogTitle>
+                <AlertDialogCancel asChild>
+                  <Button variant="ghost">✕</Button>
+                </AlertDialogCancel>
+              </AlertDialogHeader>
+              <div className="py-4">
+                <ReviewForm
+                  initialData={reviewToEdit ? { rating: reviewToEdit.rating, text: reviewToEdit.text } : undefined}
+                  onSubmit={handleEditReview}
+                  isLoading={isSaving}
+                />
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Delete Review Modal */}
+          <AlertDialog open={!!reviewToDelete} onOpenChange={() => setReviewToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Review</AlertDialogTitle>
+              </AlertDialogHeader>
+              <p className="py-4">Are you sure you want to delete this review? This action cannot be undone.</p>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => reviewToDelete && handleDeleteReview(reviewToDelete.id)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </main>
+      </div>
+    </>
   )
 }
-
