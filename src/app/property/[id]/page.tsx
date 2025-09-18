@@ -52,6 +52,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
   const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null)
   const [reviewToEdit, setReviewToEdit] = useState<Review | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<"renter" | "landlord" | null>(null)
 
   // Fetch user session and property details
   useEffect(() => {
@@ -88,6 +89,27 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
     fetchData()
   }, [propertyId, router])
 
+  // Fetch user role when userId is available
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchRole = async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userId)
+          .single();
+        if (error) throw error;
+        setUserRole((profile?.role as "renter" | "landlord" | null) ?? null);
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+      }
+    };
+
+    fetchRole();
+  }, [userId]);
+
   // Fetch reviews whenever the property is set
   useEffect(() => {
     if (!property) return
@@ -123,6 +145,10 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
 
     fetchReviews()
   }, [property])
+
+
+  // Fetch user role
+
 
   const handleCreateReview = async (data: ReviewFormValues) => {
     if (!userId || !property) return
@@ -224,7 +250,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
           <Card>
             <CardHeader className="flex justify-between items-center">
               <CardTitle>Reviews</CardTitle>
-              <Button onClick={() => setIsModalOpen(true)}>Write a Review</Button>
+              {userRole === "renter" && <Button onClick={() => setIsModalOpen(true)}>Write a Review</Button>}
             </CardHeader>
             <CardContent className="space-y-4">
               {reviews.map(review => (
@@ -241,11 +267,13 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
           {/* Create Review Modal */}
           <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <AlertDialogContent className="sm:max-w-[500px]">
-              <AlertDialogHeader className="flex justify-between items-center">
-                <AlertDialogTitle>Write a Review</AlertDialogTitle>
-                <AlertDialogCancel asChild>
-                  <Button variant="ghost">✕</Button>
-                </AlertDialogCancel>
+              <AlertDialogHeader>
+                <div className="flex justify-between items-center w-full">
+                  <AlertDialogTitle>Write a Review</AlertDialogTitle>
+                  <AlertDialogCancel asChild>
+                    <Button variant="ghost">✕</Button>
+                  </AlertDialogCancel>
+                </div>
               </AlertDialogHeader>
               <div className="py-4">
                 <ReviewForm onSubmit={handleCreateReview} isLoading={isSaving} />
