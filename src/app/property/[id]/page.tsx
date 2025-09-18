@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,8 +41,8 @@ interface ReviewFormValues {
 }
 
 export default function PropertyPage({ params }: { params: { id: string } }) {
-  const propertyId = params.id
   const router = useRouter()
+  const { id: propertyId } = useParams<{ id: string }>()
 
   const [property, setProperty] = useState<Property | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
